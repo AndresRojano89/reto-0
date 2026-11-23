@@ -37,3 +37,4 @@ Cada usuario puede crear, editar, completar y eliminar solo sus propias tareas.
 - No hacer commit ni push.
 
 # Lecciones aprendidas
+- Toda contraseña tiene longitud mínima y máxima validadas en el servidor.

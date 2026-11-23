@@ -129,6 +129,8 @@ def create_app(test_config=None):
                 error = "El usuario solo puede contener letras, números, punto, guion y guion bajo."
             elif len(password) < 8:
                 error = "La contraseña debe tener al menos 8 caracteres."
+            elif len(password) > 128:
+                error = "La contraseña no puede superar los 128 caracteres."
 
             if error is None:
                 try:
