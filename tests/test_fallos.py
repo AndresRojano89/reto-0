@@ -1,9 +1,32 @@
+import re
 import secrets
 import sqlite3
 import tempfile
 from pathlib import Path
 
 from app import create_app
+
+
+def test_requirements_declara_werkzeug_y_fija_versiones():
+    requirements_path = Path(__file__).resolve().parents[1] / "requirements.txt"
+    dependency_lines = [
+        line.strip()
+        for line in requirements_path.read_text(encoding="utf-8").splitlines()
+        if line.strip() and not line.lstrip().startswith("#")
+    ]
+
+    declares_werkzeug = any(
+        re.match(r"werkzeug(?:\s|[<>=!~;\[]|$)", line, re.IGNORECASE)
+        for line in dependency_lines
+    )
+    unpinned_dependencies = [
+        line for line in dependency_lines if "==" not in line
+    ]
+
+    assert declares_werkzeug and not unpinned_dependencies, (
+        "requirements.txt debe declarar Werkzeug y fijar cada dependencia con ==; "
+        f"sin versión fija: {unpinned_dependencies}"
+    )
 
 
 def test_password_muy_larga_no_registra_usuario():
