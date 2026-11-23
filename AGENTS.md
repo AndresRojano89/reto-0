@@ -38,3 +38,4 @@ Cada usuario puede crear, editar, completar y eliminar solo sus propias tareas.
 
 # Lecciones aprendidas
 - Toda contraseña tiene longitud mínima y máxima validadas en el servidor.
+- El inicio de sesión limita los intentos fallidos por usuario e IP y bloquea temporalmente después de 5.

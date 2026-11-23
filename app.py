@@ -2,6 +2,7 @@ import hmac
 import os
 import secrets
 import sqlite3
+import time
 from functools import wraps
 from pathlib import Path
 
@@ -61,6 +62,13 @@ def create_app(test_config=None):
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
                         username TEXT NOT NULL COLLATE NOCASE UNIQUE,
                         password_hash TEXT NOT NULL
+                    );
+                    CREATE TABLE IF NOT EXISTS login_attempts (
+                        username TEXT NOT NULL,
+                        remote_addr TEXT NOT NULL,
+                        failed_attempts INTEGER NOT NULL DEFAULT 0,
+                        locked_until REAL NOT NULL DEFAULT 0,
+                        PRIMARY KEY (username, remote_addr)
                     );
                     CREATE TABLE IF NOT EXISTS tasks (
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -155,15 +163,54 @@ def create_app(test_config=None):
         if request.method == "POST":
             username = request.form.get("username", "").strip()
             password = request.form.get("password", "")
-            user = get_db().execute(
-                "SELECT * FROM users WHERE username = ?", (username,)
+            normalized_username = username.casefold()
+            remote_addr = request.remote_addr or ""
+            now = time.time()
+            attempts = get_db().execute(
+                "SELECT failed_attempts, locked_until FROM login_attempts "
+                "WHERE username = ? AND remote_addr = ?",
+                (normalized_username, remote_addr),
             ).fetchone()
-            if user is None or not check_password_hash(user["password_hash"], password):
+            locked = attempts is not None and attempts["locked_until"] > now
+
+            if locked:
                 flash("Usuario o contraseña incorrectos.", "error")
             else:
-                session.clear()
-                session["user_id"] = user["id"]
-                return redirect(url_for("tasks"))
+                if attempts is not None and attempts["locked_until"] > 0:
+                    get_db().execute(
+                        "DELETE FROM login_attempts WHERE username = ? AND remote_addr = ?",
+                        (normalized_username, remote_addr),
+                    )
+                    attempts = None
+
+                user = get_db().execute(
+                    "SELECT * FROM users WHERE username = ?", (username,)
+                ).fetchone()
+                if user is None or not check_password_hash(user["password_hash"], password):
+                    failed_attempts = (
+                        attempts["failed_attempts"] + 1 if attempts is not None else 1
+                    )
+                    locked_until = now + 15 * 60 if failed_attempts >= 5 else 0
+                    get_db().execute(
+                        "INSERT INTO login_attempts "
+                        "(username, remote_addr, failed_attempts, locked_until) "
+                        "VALUES (?, ?, ?, ?) "
+                        "ON CONFLICT(username, remote_addr) DO UPDATE SET "
+                        "failed_attempts = excluded.failed_attempts, "
+                        "locked_until = excluded.locked_until",
+                        (normalized_username, remote_addr, failed_attempts, locked_until),
+                    )
+                    get_db().commit()
+                    flash("Usuario o contraseña incorrectos.", "error")
+                else:
+                    get_db().execute(
+                        "DELETE FROM login_attempts WHERE username = ? AND remote_addr = ?",
+                        (normalized_username, remote_addr),
+                    )
+                    get_db().commit()
+                    session.clear()
+                    session["user_id"] = user["id"]
+                    return redirect(url_for("tasks"))
         return render_template("auth.html", mode="login")
 
     @app.post("/logout")
