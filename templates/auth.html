@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}{{ "Crear cuenta" if mode == "register" else "Iniciar sesión" }}{% endblock %}
+{% block content %}
+  <section class="auth-card">
+    <div class="eyebrow">TU ESPACIO PERSONAL</div>
+    <h1>{{ "Organiza tus días." if mode == "register" else "Qué bueno verte." }}</h1>
+    <p class="muted">{{ "Crea tu cuenta y empieza a enfocarte en lo que importa." if mode == "register" else "Inicia sesión para continuar con tus tareas." }}</p>
+    <form method="post" class="form-stack">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <label for="username">Nombre de usuario</label>
+      <input id="username" name="username" autocomplete="username" minlength="3" maxlength="30" required value="{{ request.form.get('username', '') }}" placeholder="p. ej. ana">
+      <label for="password">Contraseña</label>
+      <input id="password" name="password" type="password" autocomplete="{{ 'new-password' if mode == 'register' else 'current-password' }}" minlength="{{ 8 if mode == 'register' else 1 }}" required placeholder="{{ 'Mínimo 8 caracteres' if mode == 'register' else 'Tu contraseña' }}">
+      <button class="button button-primary button-wide" type="submit">{{ "Crear mi cuenta" if mode == "register" else "Iniciar sesión" }} <span aria-hidden="true">→</span></button>
+    </form>
+    <p class="auth-switch">
+      {{ "¿Ya tienes una cuenta?" if mode == "register" else "¿Primera vez por aquí?" }}
+      <a href="{{ url_for('login' if mode == 'register' else 'register') }}">{{ "Inicia sesión" if mode == "register" else "Crea una cuenta" }}</a>
+    </p>
+  </section>
+{% endblock %}
